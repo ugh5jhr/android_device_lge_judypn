@@ -20,11 +20,22 @@
 #include <log/log.h>
 #include <android-base/stringprintf.h>
 
+#include <fstream>
+
 namespace android {
 namespace hardware {
 namespace light {
 namespace V2_0 {
 namespace implementation {
+
+#define BL              "/sys/class/backlight/panel0-backlight/"
+
+#define BL_EX           "/sys/class/backlight/panel0-backlight-ex/"
+
+#define LP_MODE         "/sys/devices/virtual/panel/factory/low_power_mode"
+
+#define BRIGHTNESS      "brightness"
+#define MAX_BRIGHTNESS  "max_brightness"
 
 /*
  * Write value to path and close file.
@@ -51,116 +62,32 @@ static int rgbToBrightness(const LightState& state) {
             + (29 * (color & 0x00ff))) >> 8;
 }
 
-static bool isLit(const LightState& state) {
-    return (state.color & 0x00ffffff);
-}
-
-void Light::setLightLocked(const LightState& state) {
-    int onMS, offMS;
-    uint32_t color;
-    char pattern[PAGE_SIZE];
-
-    switch (state.flashMode) {
-        case Flash::TIMED:
-            onMS = state.flashOnMs;
-            offMS = state.flashOffMs;
-            break;
-        case Flash::NONE:
-            onMS = 0;
-            offMS = 0;
-            break;
-        default:
-            onMS = -1;
-            offMS = -1;
-            break;
+static void handleBacklight(const LightState& state) {
+    int maxBrightness = get(BL MAX_BRIGHTNESS, -1);
+    int maxBrightnessEx = get(BL_EX MAX_BRIGHTNESS, -1);
+    if (maxBrightness < 0) {
+        maxBrightness = 255;
     }
-
-    color = state.color & 0x00ffffff;
-
-    if (offMS <= 0) {
-        sprintf(pattern,"0x%06x", color);
-        ALOGD("%s: Using onoff pattern: inColor=0x%06x\n", __func__, color);
-        set(LED ONOFF_PATTERN, pattern);
-    } else {
-        sprintf(pattern,"0x%06x,%d,%d", color, onMS, offMS);
-        ALOGD("%s: Using blink pattern: inColor=0x%06x delay_on=%d, delay_off=%d\n",
-              __func__, color, onMS, offMS);
-        set(LED BLINK_PATTERN, pattern);
+    if (maxBrightnessEx < 0) {
+        maxBrightnessEx = 255;
     }
-}
-
-void Light::checkLightStateLocked() {
-    if (isLit(mNotificationState)) {
-        setLightLocked(mNotificationState);
-    } else if (isLit(mAttentionState)) {
-        setLightLocked(mAttentionState);
-    } else if (isLit(mBatteryState)) {
-        setLightLocked(mBatteryState);
-    } else {
-        /* Lights off */
-        set(LED BLINK_PATTERN, "0x0,-1,-1");
-        set(LED ONOFF_PATTERN, "0x0");
-    }
-}
-
-void Light::handleAttention(const LightState& state) {
-    mAttentionState = state;
-    checkLightStateLocked();
-}
-
-void Light::handleBacklight(const LightState& state) {
-    int brightness, brightnessEx;
     int sentBrightness = rgbToBrightness(state);
-    if(sentBrightness < 35) {
-        brightness = sentBrightness * 2;
-        brightnessEx = sentBrightness * 2;
-    } else {
-        brightness = sentBrightness * mMaxBrightness / 255;
-        brightnessEx = sentBrightness * mMaxBrightnessEx / 255;
-    }
+    int brightness = sentBrightness * maxBrightness / 255;
+    int brightnessEx = sentBrightness * maxBrightnessEx / 255;
     set(BL BRIGHTNESS, brightness);
     set(BL_EX BRIGHTNESS, brightnessEx);
 }
 
-void Light::handleBattery(const LightState& state) {
-    mBatteryState = state;
-    checkLightStateLocked();
-}
+static std::map<Type, std::function<void(const LightState&)>> lights = {
+    {Type::BACKLIGHT, handleBacklight},
+};
 
-void Light::handleNotifications(const LightState& state) {
-    mNotificationState = state;
-    checkLightStateLocked();
-}
-
-Light::Light(bool hasBacklight, bool hasBlinkPattern, bool hasOnOffPattern) {
-    auto attnFn(std::bind(&Light::handleAttention, this, std::placeholders::_1));
-    auto backlightFn(std::bind(&Light::handleBacklight, this, std::placeholders::_1));
-    auto batteryFn(std::bind(&Light::handleBattery, this, std::placeholders::_1));
-    auto notifFn(std::bind(&Light::handleNotifications, this, std::placeholders::_1));
-    
-    if(hasBacklight)
-        mLights.emplace(Type::BACKLIGHT, backlightFn);
-    
-    if(hasBlinkPattern && hasOnOffPattern) {
-        mLights.emplace(Type::ATTENTION, attnFn);
-        mLights.emplace(Type::BATTERY, batteryFn);
-        mLights.emplace(Type::NOTIFICATIONS, notifFn);
-    }
-    
-    mMaxBrightness = get(BL MAX_BRIGHTNESS, -1);
-    mMaxBrightnessEx = get(BL_EX MAX_BRIGHTNESS, -1);
-    if (mMaxBrightness < 0) {
-        mMaxBrightness = 255;
-    }
-    if (mMaxBrightnessEx < 0) {
-        mMaxBrightnessEx = 255;
-    }
-}
+Light::Light() {}
 
 Return<Status> Light::setLight(Type type, const LightState& state) {
-    auto it = mLights.find(type);
+    auto it = lights.find(type);
 
-    if (it == mLights.end()) {
+    if (it == lights.end()) {
         return Status::LIGHT_NOT_SUPPORTED;
     }
 
@@ -177,7 +104,7 @@ Return<Status> Light::setLight(Type type, const LightState& state) {
 Return<void> Light::getSupportedTypes(getSupportedTypes_cb _hidl_cb) {
     std::vector<Type> types;
 
-    for (auto const& light : mLights) types.push_back(light.first);
+    for (auto const& light : lights) types.push_back(light.first);
 
     _hidl_cb(types);
 
