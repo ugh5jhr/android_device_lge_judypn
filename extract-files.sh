@@ -18,7 +18,7 @@
 
 set -e
 
-DEVICE=judyp
+DEVICE=judypn
 VENDOR=lge
 
 # Load extract_utils and do some sanity checks
