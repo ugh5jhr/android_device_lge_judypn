@@ -233,15 +233,11 @@ vendor/lib/libatd_modeminterface.so
 vendor/lib/libbluedroid_bdt.so
 vendor/lib/libcpion.so
 vendor/lib/libfpfactory-impl.so
-vendor/lib/libGPQTEEC_vendor.so
-vendor/lib/libhdcp1prov.so
-vendor/lib/libhdcp2p2prov.so
 vendor/lib/libhdcpsrm.so
 vendor/lib/liblgefido_hal_impl.so
 vendor/lib/liblgehdcpek.so
 vendor/lib/libLgeVendorFeatures2.so
 vendor/lib/liblgftmitem_vendor.so
-vendor/lib/libmdsprpc.so
 vendor/lib/liboemcrypto.so
 vendor/lib/libpvr.so
 vendor/lib/librmp.so
@@ -386,6 +382,12 @@ vendor/lib/libkeymasterdeviceutils.so
 vendor/lib/libkeymasterprovision.so
 vendor/lib/libkeymasterutils.so
 vendor/lib/libqtikeymaster4.so
+
+# QTI factory
+vendor/bin/hw/vendor.qti.hardware.factory@1.0-service
+vendor/etc/init/vendor.qti.hardware.factory@1.0-service.rc
+vendor/lib64/vendor.qti.hardware.factory@1.0.so
+vendor/lib64/vendor.qti.hardware.factory@1.1.so
 
 # QDCM calibration data
 vendor/etc/qdcm_calib_data_Dual_nt35597_cmd_mode_dsi_truly_panel_without_DSC.xml
