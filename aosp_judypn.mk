@@ -29,14 +29,14 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/gsi_keys.mk)
 $(call inherit-product, device/lge/judypn/device.mk)
 
 # Inherit some common dotOS stuff.
-$(call inherit-product, vendor/xdroid/config/common.mk)
+$(call inherit-product, vendor/aosp/config/common_full_phone.mk)
 
 # Overlays (inherit after vendor/cm to ensure we override it)
 DEVICE_PACKAGE_OVERLAYS += $(LOCAL_PATH)/overlay
 
 # Device identifiers
 
-PRODUCT_NAME := xdroid_judypn
+PRODUCT_NAME := aosp_judypn
 PRODUCT_DEVICE := judypn
 PRODUCT_BRAND := lge
 PRODUCT_MANUFACTURER := LGE
@@ -55,8 +55,8 @@ PRODUCT_BUILD_PROP_OVERRIDES += \
 
 BUILD_FINGERPRINT := "lge/judypn_lao_eea/judypn:10/QKQ1.191222.002/2021917599e76:user/release-keys"
 
-# Xdroid
-XDROID_MAINTAINER := EmanuelCN
+# Boot animation
+TARGET_BOOT_ANIMATION_RES := 1440
 
 # Charging Animation
 TARGET_INCLUDE_PIXEL_CHARGER := true
